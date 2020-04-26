@@ -1,38 +1,50 @@
 package com.android.shopping.repository;
 
-import android.content.Context;
+import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
+import androidx.lifecycle.Observer;
 
-import androidx.test.core.app.ApplicationProvider;
-
-import com.android.shopping.database.AppDatabase;
-import com.android.shopping.database.ProductResponseDao;
-import com.android.shopping.model.OrderDetails;
+import com.android.shopping.model.ProductItem;
+import com.android.shopping.network.Resource;
+import com.android.shopping.viewModel.ProductLisViewModel;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import io.reactivex.rxjava3.subscribers.TestSubscriber;
+import io.reactivex.Flowable;
+import io.reactivex.Observable;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @RunWith(JUnit4.class)
 public class ProductListRepositoryTest {
-    @Mock
-    ProductResponseDao dao;
+    @Rule
+    public InstantTaskExecutorRule instantTaskExecutorRule = new InstantTaskExecutorRule();
 
     @Mock
-    Context mockContext;
+    ProductListRepository repository;
+
+    @Mock
+    ProductLisViewModel viewModel;
+
+    @Mock
+    Observer<Resource<List<ProductItem>>> observer;
 
     @Before
     public void setUp() throws Exception {
-        mockContext = mock(Context.class);
-        dao = AppDatabase.getInstance(ApplicationProvider.getApplicationContext()).responseDao();
+        MockitoAnnotations.initMocks(this);
+        repository = mock(ProductListRepository.class);
+        viewModel = mock(ProductLisViewModel.class);
     }
 
     @After
@@ -41,13 +53,34 @@ public class ProductListRepositoryTest {
 
     @Test
     public void getProductList() {
-        TestSubscriber<List<OrderDetails>> testSubscriber = new TestSubscriber<>();
-        dao.getOrderDetails().subscribe(testSubscriber);
-        testSubscriber.assertNoErrors();
-        // testSubscriber.onNext();
+        List<ProductItem> data = getEmptyList();
+        when(repository.getProductList())
+                .thenReturn(Flowable.fromArray(data).map(productItems -> null));
+        // viewModel.getProductListResult().observeForever(observer);
+        viewModel.getProductList();
+
+        verify(observer).onChanged(Resource.success(data));
+    }
+
+    @Test
+    public void getProdutListError() {
+        Throwable errror = new Throwable("No product found");
+        when(repository.getProductList())
+                .thenReturn(Flowable.just(getEmptyList()));
+
     }
 
     @Test
     public void cancelOrder() {
+        when(repository.cancelOrder(0, 0))
+                .thenReturn(Observable.fromArray(getEmptyList()));
+        viewModel.cancelOrder(0, 0);
+        verify(observer).onChanged(Resource.loading());
+
+
+    }
+
+    private List<ProductItem> getEmptyList() {
+        return new ArrayList<>();
     }
 }

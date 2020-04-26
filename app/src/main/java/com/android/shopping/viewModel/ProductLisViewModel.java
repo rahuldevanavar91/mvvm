@@ -67,7 +67,7 @@ public class ProductLisViewModel extends AndroidViewModel {
 
     }
 
-    private void getProductList() {
+    public void getProductList() {
         mProductListResult.setValue(Resource.loading());
         compositeDisposable.add(mProductListRepository.getProductList().subscribeOn(Schedulers.io())
                 .observeOn(RxJavaBridge.toV2Scheduler(AndroidSchedulers.mainThread()))
