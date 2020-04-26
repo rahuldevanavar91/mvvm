@@ -8,9 +8,9 @@ import com.android.shopping.database.ProductResponseDao;
 import com.android.shopping.model.OrderDetails;
 import com.android.shopping.model.ProductItem;
 import com.android.shopping.network.ApiEndPoint;
-import com.android.shopping.network.Resource;
 import com.android.shopping.network.RetrofitService;
 import com.android.shopping.ui.adapter.ProductListAdapter;
+import com.android.shopping.util.Util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +19,7 @@ import hu.akarnokd.rxjava3.bridge.RxJavaBridge;
 import io.reactivex.Completable;
 import io.reactivex.Flowable;
 import io.reactivex.Observable;
+import io.reactivex.functions.Function;
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.subscribers.DisposableSubscriber;
@@ -30,15 +31,25 @@ public class ProductListRepository {
     private ApiEndPoint mApiEndPoint;
     private List<ProductItem> productItems;
     private CompositeDisposable compositeDisposable;
+    private Context mContext;
 
     public ProductListRepository(Context context) {
         mProductResponseDao = AppDatabase.getInstance(context).responseDao();
         mApiEndPoint = RetrofitService.getRetrofitInstance().create(ApiEndPoint.class);
         productItems = new ArrayList<>();
         compositeDisposable = new CompositeDisposable();
+        mContext = context;
     }
 
-    public Flowable<Resource<List<ProductItem>>> getProductList() {
+    public Flowable<List<ProductItem>> getProductList() {
+        if (Util.isNetworkConnected(mContext)) {
+            return getDatFromAPI();
+        } else {
+            return getDataFromDb();
+        }
+    }
+
+    private Flowable<List<ProductItem>> getDatFromAPI() {
         return mApiEndPoint.getProducts().subscribeOn(Schedulers.io())
                 .observeOn(RxJavaBridge.toV2Scheduler(AndroidSchedulers.mainThread()))
                 .map(productResponse -> {
@@ -47,8 +58,20 @@ public class ProductListRepository {
                         insertProductsToDb(productResponse.getProducts());
                         productItems.addAll(0, productResponse.getProducts());
                     }
-                    return Resource.success(productItems);
+                    return productItems;
                 }).doOnError(throwable -> Log.i("Test", "data " + throwable.getMessage()));
+
+    }
+
+    private Flowable<List<ProductItem>> getDataFromDb() {
+        return mProductResponseDao.getListingProducts().map(new Function<List<ProductItem>, List<ProductItem>>() {
+            @Override
+            public List<ProductItem> apply(List<ProductItem> products) throws Exception {
+                productItems = products;
+                getOrderList();
+                return productItems;
+            }
+        });
     }
 
     private void insertProductsToDb(List<ProductItem> products) {
