@@ -8,6 +8,7 @@ import com.android.shopping.database.ProductResponseDao;
 import com.android.shopping.model.OrderDetails;
 import com.android.shopping.model.ProductItem;
 import com.android.shopping.network.ApiEndPoint;
+import com.android.shopping.network.Resource;
 import com.android.shopping.network.RetrofitService;
 import com.android.shopping.ui.adapter.ProductListAdapter;
 
@@ -18,7 +19,6 @@ import hu.akarnokd.rxjava3.bridge.RxJavaBridge;
 import io.reactivex.Completable;
 import io.reactivex.Flowable;
 import io.reactivex.Observable;
-import io.reactivex.functions.Consumer;
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.subscribers.DisposableSubscriber;
@@ -38,7 +38,7 @@ public class ProductListRepository {
         compositeDisposable = new CompositeDisposable();
     }
 
-    public Flowable<List<ProductItem>> getProductList() {
+    public Flowable<Resource<List<ProductItem>>> getProductList() {
         return mApiEndPoint.getProducts().subscribeOn(Schedulers.io())
                 .observeOn(RxJavaBridge.toV2Scheduler(AndroidSchedulers.mainThread()))
                 .map(productResponse -> {
@@ -47,7 +47,7 @@ public class ProductListRepository {
                         insertProductsToDb(productResponse.getProducts());
                         productItems.addAll(0, productResponse.getProducts());
                     }
-                    return productItems;
+                    return Resource.success(productItems);
                 }).doOnError(throwable -> Log.i("Test", "data " + throwable.getMessage()));
     }
 

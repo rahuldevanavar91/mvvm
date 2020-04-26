@@ -1,7 +1,11 @@
 package com.android.shopping.repository;
 
+import android.app.Application;
+import android.os.Build;
+
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 import androidx.lifecycle.Observer;
+import androidx.test.core.app.ApplicationProvider;
 
 import com.android.shopping.model.ProductItem;
 import com.android.shopping.network.Resource;
@@ -12,21 +16,24 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import io.reactivex.Flowable;
 import io.reactivex.Observable;
+import io.reactivex.functions.Function;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(JUnit4.class)
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = Build.VERSION_CODES.O_MR1)
 public class ProductListRepositoryTest {
     @Rule
     public InstantTaskExecutorRule instantTaskExecutorRule = new InstantTaskExecutorRule();
@@ -43,8 +50,9 @@ public class ProductListRepositoryTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+        Application app = mock(Application.class);
         repository = mock(ProductListRepository.class);
-        viewModel = mock(ProductLisViewModel.class);
+        viewModel = new ProductLisViewModel(ApplicationProvider.getApplicationContext());
     }
 
     @After
@@ -53,20 +61,22 @@ public class ProductListRepositoryTest {
 
     @Test
     public void getProductList() {
-        List<ProductItem> data = getEmptyList();
+        Resource<List<ProductItem>> data = Resource.success(getEmptyList());
         when(repository.getProductList())
-                .thenReturn(Flowable.fromArray(data).map(productItems -> null));
-        // viewModel.getProductListResult().observeForever(observer);
-        viewModel.getProductList();
-
-        verify(observer).onChanged(Resource.success(data));
+                .thenReturn(Flowable.fromArray(getEmptyList()).map(new Function<List<ProductItem>, Resource<List<ProductItem>>>() {
+                    @Override
+                    public Resource<List<ProductItem>> apply(List<ProductItem> productItems) throws Exception {
+                        return data;
+                    }
+                }));
+        viewModel.getProductListResult().observeForever(observer);
+      //  viewModel.getProductList();
+        verify(observer).onChanged(data);
     }
 
     @Test
     public void getProdutListError() {
         Throwable errror = new Throwable("No product found");
-        when(repository.getProductList())
-                .thenReturn(Flowable.just(getEmptyList()));
 
     }
 

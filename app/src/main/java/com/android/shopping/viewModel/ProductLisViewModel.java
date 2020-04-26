@@ -71,11 +71,11 @@ public class ProductLisViewModel extends AndroidViewModel {
         mProductListResult.setValue(Resource.loading());
         compositeDisposable.add(mProductListRepository.getProductList().subscribeOn(Schedulers.io())
                 .observeOn(RxJavaBridge.toV2Scheduler(AndroidSchedulers.mainThread()))
-                .subscribeWith(new DisposableSubscriber<List<ProductItem>>() {
+                .subscribeWith(new DisposableSubscriber<Resource<List<ProductItem>>>() {
                     @Override
-                    public void onNext(List<ProductItem> productItems) {
+                    public void onNext(Resource<List<ProductItem>> productItems) {
                         if (productItems != null) {
-                            mProductListResult.setValue(Resource.success(productItems, RequestType.productList));
+                            mProductListResult.setValue(productItems);
                         } else {
                             mProductListResult.setValue(Resource.error("No product found"));
                         }
